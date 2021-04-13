@@ -1,0 +1,521 @@
+#include <iostream>
+#include <string>
+using namespace std;
+
+struct Node
+{
+	int value;
+	Node* npx; //stores the XOR of the next and previous node
+};
+
+struct Actual
+{
+	Node* actual = nullptr;
+	Node* next = nullptr;
+	Node* previous = nullptr;
+};
+
+Node* XOR(Node* node1, Node* node2)
+{
+	return (Node*)((uintptr_t)node1 ^ (uintptr_t)node2);
+}
+
+void ACTUAL(Actual* tmp)
+{
+	if (tmp->actual == nullptr)
+	{
+		cout << "NULL" << endl;
+	}
+	else
+	{
+		cout << tmp->actual->value << endl;
+	}
+}
+
+void ADD_BEG(Node** head, Node** tail, Actual* tmp, int value)
+{
+	Node* newNode = new Node;
+	newNode->value = value;
+	newNode->npx = XOR(*head, NULL);
+
+	//if this is the first element that appears, make it actual
+	if (tmp->actual == NULL) tmp->actual = newNode;
+	
+	if (*tail == NULL)
+	{
+		*tail = newNode;
+	}
+
+	//when next element appears, overwrite the address of prev
+	if (*head != NULL)
+	{
+		if (tmp->previous == NULL)
+		{
+			tmp->previous = newNode;
+		}
+		(*head)->npx = XOR(newNode, (*head)->npx);
+	}
+
+	*head = newNode;
+}
+
+void ADD_END(Node** tail, Node** head, Actual* tmp, int value)
+{
+	Node* newNode = new Node;
+	newNode->value = value;
+
+	newNode->npx = XOR(*tail, NULL);
+
+	//if this is the first element that appears, make it actual
+	if (tmp->actual == NULL) tmp->actual = newNode;
+
+	//when the list is not empty, overwrite the address of the previous
+	if (*tail != NULL)
+	{
+		if (tmp->next == NULL)
+		{
+			tmp->next = newNode;
+		}
+		(*tail)->npx = XOR(newNode, (*tail)->npx);
+	}
+
+	if (*head == NULL)
+	{
+		*head = newNode;
+	}
+	*tail = newNode;
+}
+
+void ADD_ACT(Actual* tmp, Node** head, Node** tail, int value)
+{
+	Node* newNode = new Node;
+	newNode->value = value;
+	if (*head == NULL)
+	{
+		return;
+	}
+	else if (tmp->actual == *head)
+	{
+		tmp->previous = newNode;
+		newNode->npx = XOR(NULL, tmp->actual);
+		tmp->actual->npx = XOR(newNode, tmp->next);
+		*head = newNode;
+	}
+	else
+	{
+		Node* prevPrev = XOR(tmp->previous->npx, tmp->actual);
+		newNode->npx = XOR(tmp->previous, tmp->actual);
+		tmp->previous->npx = XOR(prevPrev, newNode);
+		tmp->previous = newNode;
+		tmp->actual->npx = XOR(newNode, tmp->next);
+	}
+}
+
+void DEL_ACT(Actual* tmp, Node** head, Node** tail)
+{
+	if (*head == *tail)
+	{
+		*head = nullptr;
+		*tail = nullptr;
+		tmp->actual = nullptr;
+		tmp->next = nullptr;
+		tmp->previous = nullptr;
+	}
+	else if (tmp->actual == *head)
+	{
+		tmp->actual = *tail;
+		tmp->next = NULL;
+		tmp->previous = XOR(tmp->actual->npx, NULL);
+		Node* oldHead = *head;
+		*head = XOR(NULL, (*head)->npx);
+		(*head)->npx = XOR(oldHead, (*head)->npx);
+		delete oldHead;
+	}
+	else if (tmp->actual == *tail)
+	{
+		tmp->actual = XOR((*tail)->npx, NULL);
+		tmp->next = NULL;
+		tmp->previous = XOR(tmp->actual->npx, NULL);
+		Node* oldTail = *tail;
+		*tail = XOR((*tail)->npx, NULL);
+		(*tail)->npx = XOR((*tail)->npx, oldTail);
+		delete oldTail;
+	}
+	else
+	{
+		Node* oldAct = tmp->actual;
+		Node* prevPrev = XOR(tmp->previous->npx, tmp->actual);
+		Node* nextNext = XOR(tmp->next->npx, oldAct);
+		tmp->actual = XOR(oldAct->npx, tmp->next);
+		tmp->previous = prevPrev;
+		tmp->actual->npx = XOR(prevPrev, tmp->next);
+		tmp->next->npx = XOR(tmp->actual, nextNext);
+		delete oldAct;
+	}
+}
+
+void NEXT(Actual* tmp, Node** head, Node** tail)
+{
+	if (tmp->actual == nullptr)
+	{
+		cout << "NULL" << endl;
+	}
+	else if (*head == *tail)
+	{
+		cout << tmp->actual->value << endl;
+	}
+	else if (tmp->actual == *head)
+	{
+		tmp->previous = tmp->actual;
+		tmp->actual = XOR(NULL, tmp->actual->npx);
+		tmp->next = XOR(tmp->actual->npx, tmp->previous);
+		cout << tmp->actual->value << endl;
+	}
+	else if (tmp->actual == *tail)
+	{
+		tmp->previous = NULL;
+		tmp->actual = *head;
+		tmp->next = XOR(NULL, tmp->actual->npx);
+		cout << tmp->actual->value << endl;
+	}
+	else if ((tmp->actual != *head) && (tmp->actual != *tail))
+	{
+		Node* next = XOR(tmp->previous, tmp->actual->npx);
+		tmp->previous = tmp->actual;
+		tmp->actual = next;
+		tmp->next = XOR(tmp->previous, tmp->actual->npx);
+		cout << tmp->actual->value << endl;
+	}
+}
+
+void PREV(Actual* tmp, Node** head, Node** tail)
+{
+	if (tmp->actual == nullptr)
+	{
+		cout << "NULL" << endl;
+	}
+	else if ((tmp->previous == nullptr) && (tmp->next == nullptr))
+	{
+		cout << tmp->actual->value << endl;
+	}
+	else if (tmp->actual == *head)
+	{
+		tmp->next = NULL;
+		tmp->actual = *tail;
+		tmp->previous = XOR(tmp->actual->npx, NULL);
+		cout << tmp->actual->value << endl;
+	}
+	else if (tmp->actual == *tail)
+	{
+		tmp->next = tmp->actual;
+		tmp->actual = XOR(tmp->actual->npx, NULL);
+		tmp->previous = XOR(tmp->actual->npx, tmp->next);
+		cout << tmp->actual->value << endl;
+	}
+	else if ((tmp->actual != *head) && (tmp->actual != *tail))
+	{
+		Node* previous = XOR(tmp->actual->npx, tmp->next);
+		tmp->next = tmp->actual;
+		tmp->actual = previous;
+		tmp->previous = XOR(tmp->actual->npx, tmp->next);
+		cout << tmp->actual->value << endl;
+	}
+}
+
+void DEL_BEG(Node** head, Node** tail, Actual* tmp)
+{
+	if (*head == *tail)
+	{
+		*head = nullptr;
+		*tail = nullptr;
+		tmp->actual = nullptr;
+		tmp->next = nullptr;
+		tmp->previous = nullptr;
+	}
+	else if (*head == tmp->actual)
+	{
+		tmp->actual = *tail;
+		tmp->next = NULL;
+		tmp->previous = XOR(tmp->actual->npx, NULL);
+		Node* oldHead = *head;
+		*head = XOR(NULL, (*head)->npx);
+		(*head)->npx = XOR(oldHead, (*head)->npx);
+		delete oldHead;
+	}
+	else
+	{
+		if (*head == tmp->previous)
+		{
+			tmp->previous = NULL;
+		}
+		Node* oldHead = *head;
+		*head = XOR(NULL, (*head)->npx);
+		(*head)->npx = XOR(oldHead, (*head)->npx);
+		delete oldHead;
+	}
+}
+
+void DEL_END(Node** head, Node** tail, Actual* tmp)
+{
+	if (*head == *tail)
+	{
+		*head = nullptr;
+		*tail = nullptr;
+		tmp->actual = nullptr;
+		tmp->next = nullptr;
+		tmp->previous = nullptr;
+	}
+	else if (*tail == tmp->actual)
+	{
+		tmp->actual = XOR((*tail)->npx, NULL);
+		tmp->next = NULL;
+		tmp->previous = XOR(tmp->actual->npx, NULL);
+		Node* oldTail = *tail;
+		*tail = XOR((*tail)->npx, NULL);
+		(*tail)->npx = XOR((*tail)->npx, oldTail);
+		delete oldTail;
+	}
+	else
+	{
+		if (*tail == tmp->next)
+		{
+			tmp->next = NULL;
+		}
+		Node* oldTail = *tail;
+		*tail = XOR((*tail)->npx, NULL);
+		(*tail)->npx = XOR((*tail)->npx, oldTail);
+		delete oldTail;
+	}
+}
+
+void DELETE_NODE(Actual* tmp, Node** head, Node** tail, Node* current, Node* previous)
+{
+	if (*head == *tail)
+	{
+		*head = nullptr;
+		*tail = nullptr;
+		tmp->actual = nullptr;
+		tmp->next = nullptr;
+		tmp->previous = nullptr;
+	}
+	else if (current == tmp->actual)
+	{
+		Node* oldAct = tmp->actual;
+		Node* prevPrev = XOR(tmp->previous->npx, tmp->actual);
+		Node* nextNext = XOR(tmp->next->npx, tmp->actual);
+		tmp->actual = XOR(oldAct->npx, tmp->next);
+		tmp->previous = prevPrev;
+		tmp->actual->npx = XOR(prevPrev, tmp->next);
+		if (tmp->next != NULL)
+		{
+			tmp->next->npx = XOR(tmp->actual, nextNext);
+			delete oldAct;
+		}
+	}
+	else if (current == tmp->previous)
+	{
+		Node* oldPrev = tmp->previous;
+		Node* prevPrev = XOR(tmp->previous->npx, tmp->actual);
+		Node* prevPrevPrev = XOR(prevPrev->npx, tmp->previous);
+		tmp->previous = XOR(oldPrev->npx, tmp->actual);
+		tmp->previous->npx = XOR(prevPrevPrev, tmp->actual);
+		tmp->actual->npx = XOR(prevPrev, tmp->next);
+		delete oldPrev;
+	}
+	else if (current == tmp->next)
+	{
+		Node* oldNext = tmp->next;
+		Node* nextNext = XOR(tmp->actual, tmp->next->npx);
+		Node* nextNextNext = XOR(nextNext->npx, tmp->next);
+		tmp->next = XOR(tmp->actual, oldNext->npx);
+		tmp->next->npx = XOR(tmp->actual, nextNextNext);
+		tmp->actual->npx = XOR(tmp->previous, nextNext);
+		delete oldNext;
+	}
+	else
+	{
+		Node* oldNode = current;
+		Node* next = XOR(previous, current->npx);
+		Node* prevPrev = XOR(previous->npx, current);
+		Node* nextNext = XOR(current, next->npx);
+		previous->npx = XOR(prevPrev, next);
+		next->npx = XOR(previous, nextNext);
+		delete oldNode;
+	}
+}
+
+void DEL_VAL(Node** head, Node** tail, Actual* tmp, int value)
+{
+	if (*head == NULL) return;
+	Node* curr = *head;
+	Node* prev = NULL;
+	Node* next;
+
+	while (curr != NULL) 
+	{
+		if (curr->value == value)
+		{
+			if (curr == *head)
+			{
+				next = XOR(prev, curr->npx);
+				prev = NULL;
+				DEL_BEG(head, tail, tmp);
+				curr = next;
+			}
+			else if (curr == *tail)
+			{
+				DEL_END(head, tail, tmp);
+				return;
+			}
+			else
+			{
+				next = XOR(prev, curr->npx);
+				prev = XOR(curr->npx, next);
+				DELETE_NODE(tmp, head, tail, curr, prev);
+				curr = next;
+			}
+		}
+		else
+		{
+			next = XOR(prev, curr->npx);
+			prev = curr;
+			curr = next;
+		}
+	}
+}
+
+void PRINT_FORWARD(Node* head)
+{
+	if (head == nullptr)
+	{
+		cout << "NULL" << endl;
+		return;
+	}
+	Node* curr = head;
+	Node* prev = NULL;
+	Node* next;
+
+	while (curr != NULL)
+	{
+		cout << curr->value << " ";
+		next = XOR(prev, curr->npx);
+		prev = curr;
+		curr = next;
+	}
+	cout << endl;
+}
+
+void PRINT_BACKWARD(Node* tail)
+{
+	if (tail == nullptr)
+	{
+		cout << "NULL" << endl;
+		return;
+	}
+	Node* curr = tail;
+	Node* next = NULL;
+	Node* prev;
+
+	while (curr != NULL)
+	{
+		cout << curr->value << " ";
+		prev = XOR(next, curr->npx);
+		next = curr;
+		curr = prev;
+	}
+	cout << endl;
+}
+
+void freeMemory(Node** head, Node** tail, Actual* tmp)
+{
+	if (*head != NULL)
+	{
+		while (*head != NULL)
+		{
+			DEL_BEG(head, tail, tmp);
+		}
+	}
+}
+
+int Choice(string command)
+{
+	if (command == "ACTUAL") return 0;
+	else if (command == "NEXT") return 1;
+	else if (command == "PREV") return 2;
+	else if (command == "ADD_BEG") return 3;
+	else if (command == "ADD_END") return 4;
+	else if (command == "ADD_ACT") return 5;
+	else if (command == "DEL_BEG") return 6;
+	else if (command == "DEL_END") return 7;
+	else if (command == "DEL_VAL") return 8;
+	else if (command == "DEL_ACT") return 9;
+	else if (command == "PRINT_FORWARD") return 10;
+	else if (command == "PRINT_BACKWARD") return 11;
+	return -1;
+}
+
+int main()
+{
+	ios_base::sync_with_stdio(0); 
+	cin.tie(0);
+	int num = 0;
+	Node* head = NULL;
+	Node* tail = NULL;
+	Actual tmp;
+	string command;
+	while (cin >> command)
+	{
+		switch (Choice(command))
+		{
+		case 0:
+			ACTUAL(&tmp);
+			break;
+		case 1:
+			NEXT(&tmp, &head, &tail);
+			break;
+		case 2:
+			PREV(&tmp, &head, &tail);
+			break;
+		case 3:
+			cin >> num;
+			ADD_BEG(&head, &tail, &tmp, num);
+			break;
+		case 4:
+			cin >> num;
+			ADD_END(&tail, &head, &tmp, num);
+			break;
+		case 5:
+			cin >> num;
+			ADD_ACT(&tmp, &head, &tail, num);
+			break;
+		case 6:
+			DEL_BEG(&head, &tail, &tmp);
+			break;
+		case 7:
+			DEL_END(&head, &tail, &tmp);
+			break;
+		case 8:
+			cin >> num;
+			DEL_VAL(&head, &tail, &tmp, num);
+			break;
+		case 9:
+			DEL_ACT(&tmp, &head, &tail);
+			break;
+		case 10:
+			PRINT_FORWARD(head);
+			break;
+		case 11:
+			PRINT_BACKWARD(tail);
+			break;
+		case -1:
+			cout << "Wrong command" << endl;
+			break;
+		}
+	}
+	freeMemory(&head, &tail, &tmp);
+}
+
+
+
+
+
